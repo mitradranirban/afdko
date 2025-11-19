@@ -1,0 +1,44 @@
+--- a/c/shared/source/ttread/ttread.c
++++ b/c/shared/source/ttread/ttread.c
+@@ -XXXX,11 +XXXX,15 @@
+-/* Name from Unicode value. */
+-static void assignUnicodeName(ttrCtx h, GID gid, UV uv) {
+-    char buf[8];
++/* Name from Unicode value. */
++static void assignUnicodeName(ttrCtx h, GID gid, UV uv) {
++    /* "uni" + 4 hex digits + NUL; extra headroom keeps fortify happy. */
++    char buf[16];
+
+     if (uv == 0xFFFF ||
+         uv == 0xFFFE ||
+         (0xD800 <= uv && uv <= 0xDFFF))
+         return; /* Reject to non-Unicode and surrogate values */
+-
+-    sprintf(buf, "uni%04hX", uv);
++    /* Use bounded snprintf to avoid potential overflow under _FORTIFY_SOURCE. */
++    snprintf(buf, sizeof(buf), "uni%04hX", uv);
+@@ -YYYY,13 +YYYY,18 @@
+ static void assignGIDNames(ttrCtx h) {
+     long gid;
+
+     if (h->unnamed == 0)
+         return;
+
+@@ -ZZZZ,10 +ZZZZ,15 @@
+-    for (gid = 0; gid < h->glyphs.cnt; gid++)
+-        if (unnamedGlyph(h, (unsigned short)gid)) {
+-            char buf[10];
+-            sprintf(buf, "g%ld", gid);
++    for (gid = 0; gid < h->glyphs.cnt; gid++)
++        if (unnamedGlyph(h, (unsigned short)gid)) {
++            /* "g" + decimal representation of long + NUL; 32 is ample. */
++            char buf[32];
++
++            /* Use bounded snprintf so fortified libc can verify safety. */
++            snprintf(buf, sizeof(buf), "g%ld", gid);
+             h->glyphs.array[gid].info.gname.impl =
+                 /* 64-bit warning fixed by cast here HO */
+                 addString(h, (int)strlen(buf), buf);
+             h->glyphsByName.array[h->glyphsByName.cnt++] = (GID)gid;
+             if (--h->unnamed == 0)
+                 break;
